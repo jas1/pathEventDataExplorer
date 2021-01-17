@@ -1,0 +1,137 @@
+---
+title: "document_creation"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# references: 
+
+example:
+https://cran.r-project.org/web/packages/golem/vignettes/a_start.html
+
+example applied:
+https://towardsdatascience.com/production-grade-r-shiny-with-golem-prototyping-51b03f37c2a9
+
+communication between modules: 
+https://shiny.rstudio.com/articles/communicate-bet-modules.html
+
+testing: 
+https://shiny.rstudio.com/articles/integration-testing.html
+
+# objective: 
+
+define a path as links, like graph nodego links. 
+ex: from: step_a ; to: step_b
+
+define events that happen in each node. remember an event is a label that happens at a time and might have a value. 
+ex: event: step_a date|datetime: 2021-01-01 value: 10
+
+visualize path of nodes, how they are connected and some statistic on each node,
+ex: event: step_a|n:22; event:step_b; n:20
+
+# define ui: 
+
+data load: a place where you can load the data. excel for now as its how data is arriving :/
+- links data: an excel with specific sheet name to load. with format from|to
+- event data: an excel with specific sheet name to load. with format event|datetime|value
+
+data explore: a place where you can see what data has been loaded
+- data preview: 
+-- data table with loaded links data
+-- data table with loaded event data
+
+visualization: 
+- network visualization with specific filters
+
+# process of this app creation
+
+## generic:
+
+- create: rstudio > new project > shiny with golem > select cran valid name ( camel case NOT snake case)
+- repo: create a github, 
+- fill: dev/01_start.R # some config
+- execute: golem::set_golem_options() # options :p
+- execute: golem::use_recommended_tests() # initialize test structure
+- execute: golem::use_recommended_deps() # initialize dependencies
+- execute: golem::use_utils_ui() # ui utilities
+- execute: golem::use_utils_server() #server utilities
+- execute: usethis::use_package("shinipsum") # for mocking parts.
+- execute: usethis::use_package("shinydashboard") # ui: custom presentation
+- execute: usethis::use_package("shinydashboardPlus") # ui: custom presentation
+
+- execute: golem::add_fct( "helpers" ) # for business functions
+- execute: golem::add_utils( "helpers" ) # for utility functions ( utility = more abstract than business)
+
+- execute: golem::add_js_file("script") # just to have a js file script
+- execute: golem::add_js_handler("script")  # just to have a js handler script
+- execute: golem::add_css_file("custom") # just to have custom css
+- execute: usethis::use_data_raw() # for having some data; and define package data estructure
+
+- create /inst/extdata: for loading the external demo data.
+- execute: usethis::use_package("readxl") # to use sample data in case 1
+
+## custom: 
+
+- execute: golem::add_module(name = 'data_load') # structure: modules
+- execute: golem::add_module(name = 'data_explore') # structure: modules
+- execute: golem::add_module(name = 'data_viz') # structure: modules
+
+- edit app_ui.r
+
+# validate it works. 
+
+devtools::install()
+pathEventDataExplorer::run_app()
+
+
+# continue development
+
+
+# issues:
+
+- the mod divided app doesnt work well. 
+-- for testing: https://shiny.rstudio.com/articles/integration-testing.html
+--- still under development so it doesnt count.
+-- main issue: uploading seems ok , but id does not print the paths of reactive upload.
+--- also as it doesnt load, i cant explore that on other modules.
+
+
+## mod upload problem
+
+cannot make that other module reads data read in module upload
+as it was holding everything, i moved the uploads from the module to the main component
+
+## for magritrr intertragion: 
+usethis::use_pipe() # for adding the stuff
+devtools::document() # for refreshing
+desc::desc_get_deps("DESCRIPTION") # to see if apears
+
+## visnetwork inside a module
+
+FIXME: 
+may be because of namespaces and custom JS , the names  or ids are not ok.
+input_network_click_node
+look at this on mod_data_viz 
+
+## restarting interrupted promise evaluation
+
+somewhere when loading data
+
+## filtering dates have issues too. 
+
+changed when using complete sample file
+
+got to review when events sheet is not completed.
+
+# validate external data is created
+
+```{r}
+sample_data_links_events_path <- system.file("extdata", "sample_data_links_events.xlsx", package = "pathEventDataExplorer")
+sample_data_links <- readxl::read_xlsx(sample_data_links_events_path,sheet = "links")
+sample_data_links <- readxl::read_xlsx(sample_data_links_events_path,sheet = "events")
+
+```
+
