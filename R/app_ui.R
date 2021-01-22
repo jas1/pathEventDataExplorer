@@ -51,9 +51,6 @@ body_definition <- function(){
     shinydashboard::tabItems(
       shinydashboard::tabItem("data_load",
                               div(
-
-
-
                                 div(
                                   h2("Upload Link data"),
                                   textInput("link_data_sheet", "Excel Sheet", "links"),
@@ -64,8 +61,6 @@ body_definition <- function(){
                                   textInput("event_data_sheet", "Excel Sheet", "events"),
                                   fileInput("event_data_file_upload","Select a file")
                                 )
-
-
                               )
 
                               # mod_data_load_ui("mod_data_load_ui_1")

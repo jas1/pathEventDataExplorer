@@ -16,8 +16,14 @@
 ## Dependencies ----
 ## Add one line by package you want to add as dependency
 usethis::use_package( "thinkr" ) #install.packages( "thinkr" )
-usethis::use_package( "visNetwork" ) #install.packages( "thinkr" )
 usethis::use_package( "dplyr" )
+usethis::use_package( "shinipsum" ) #install.packages( "shinipsum" )
+usethis::use_package( "shinydashboardPlus" ) #install.packages( "shinydashboardPlus" )
+usethis::use_package( "shinydashboard" ) #install.packages( "shinydashboard" )
+usethis::use_package( "visNetwork" ) #install.packages( "visNetwork" )
+usethis::use_package( "tidygraph" ) #install.packages( "tidygraph" )
+
+
 
 ## Add modules ----
 ## Create a module infrastructure in R/

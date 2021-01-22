@@ -144,13 +144,6 @@ mod_data_viz_server <- function(input, output, session,
     filters
   })
 
-  # observeEvent(input$input_apply_filters, {
-  #     current_filters_reactive()
-  #     graph_procesed_reactive()
-  #     # session$sendCustomMessage(type = 'testmessage',
-  #     #                           message = 'Thank you for clicking')
-  # })
-
   graph_procesed_reactive <- reactive({
     tmp_out <- make_network(links_dataset_reactive(),
                             event_dataset_reactive(),
@@ -162,7 +155,33 @@ mod_data_viz_server <- function(input, output, session,
   })
 
   graph_vis_reactive <- reactive({
-    graph_procesed_reactive()$vis_out
+
+    current_net <-  graph_procesed_reactive()$vis_out
+
+    # add the event post generate the visnetwork object because i need the shiny function ns
+    net_w_event <- current_net %>%
+      #modules & visnetwork vars : https://github.com/datastorm-open/visNetwork/issues/241
+      visNetwork:::visEvents(click = paste0("function(clickEvent){
+                    nodesVar = clickEvent.nodes[0];
+                    edgesVar = clickEvent.edges[0];
+                    if (nodesVar == null & edgesVar == null){
+                    //Shiny.onInputChange('",ns('input_network_click_node'),"', '');
+                    //Shiny.onInputChange('",ns('input_network_click_edge'),"', '');
+                    }
+
+                    if (nodesVar != null){
+                    Shiny.onInputChange('",ns('input_network_click_node'),"', nodesVar);
+                    Shiny.onInputChange('",ns('input_network_click_edge'),"', '');
+                    }
+
+                    if (nodesVar == null & edgesVar != null){
+                    Shiny.onInputChange('",ns('input_network_click_edge'),"', edgesVar);
+                    Shiny.onInputChange('",ns('input_network_click_node'),"', '');
+                    }
+                    //alert(nodesVar,edgesVar);
+                    ;}"))
+
+    net_w_event
   })
 
   output$network_out <- visNetwork::renderVisNetwork({
@@ -175,10 +194,8 @@ mod_data_viz_server <- function(input, output, session,
 
     node_info <- graph_data_reactive() %>%
       tidygraph::activate(nodes) %>%
-      tibble::as_tibble() %>%
-      dplyr::rename(count=size) %>%
-      dplyr::select(name,count)
-    # print(node_info)
+      tibble::as_tibble() #%>%
+
     DT::datatable(node_info,
                   escape = FALSE,
                   filter = 'top',
@@ -200,8 +217,8 @@ mod_data_viz_server <- function(input, output, session,
 
   filtered_nodes_reactive <- reactive({
     req(input$input_network_click_node)
-    # input.input_static_network_click_vertex
-    # input.input_static_network_click_edge
+    # input.input_network_click_node
+    # input.input_network_click_edge
     print(input$input_network_click_node)
     input_node <- input$input_network_click_node
     print(input_node)
@@ -254,21 +271,16 @@ make_network <- function(graph_links,graph_counts_data,filters=NULL){
   }
 
   counted_data <- graph_counts_data %>% dplyr::count(event)
-  # counted_data %>% View()
-  # graph_node_data_merged <- graph_links %>%
-  #     left_join(counted_data,by=c("evento"=""))
 
   igraph_edgelist_2 <- tidygraph::as_tbl_graph(graph_links,directed = TRUE)
-  # nombres <- igraph::V(igraph_edgelist_2)$name %>% tibble::enframe(name = NULL,value = "entidades")
-  # attr_node_color <- nombres %>% left_join(nodes_colors) %>% pull(color)
-  # igraph::V(igraph_edgelist_2)$color <- attr_node_color
 
-  igraph_edgelist_3 <-  igraph_edgelist_2 %>%
+  igraph_edgelist_3 <- igraph_edgelist_2 %>%
     tidygraph::activate(nodes) %>%
     dplyr::left_join(counted_data,by=c("name"="event")) %>%
-    dplyr::rename(size=n) %>%
+    dplyr::mutate(count=n) %>%
+    dplyr::mutate(size=count+10) %>%
     dplyr::mutate(title=paste0(name,"<br/>",
-                        "Count: ",size)) %>%
+                        "Count: ",count)) %>%
     dplyr::mutate(color=dplyr::if_else(is.na(size),"#9cb2ba","#b8ffe0"))
   # https://www.color-hex.com/color-palette/102951
   # https://www.color-hex.com/color-palette/5526
@@ -287,42 +299,21 @@ make_network <- function(graph_links,graph_counts_data,filters=NULL){
   layout_current <- "layout_nicely" #default
   # layout_current <- "layout_as_tree"
 
-  network_ret <- igraph_edgelist_3 %>% visNetwork::visIgraph(randomSeed = random_seed ) %>%
-    # visNetwork::visNodes(size = 10) %>%
-    visNetwork::visIgraphLayout(randomSeed = random_seed,layout = layout_current )  %>%
-    # visNetwork::addIonicons()
-    visNetwork:::visEvents(click = "function(clickEvent){
-                      nodesVar = clickEvent.nodes[0];
-                      edgesVar = clickEvent.edges[0];
-                      if (nodesVar == null & edgesVar == null){
-                      //Shiny.onInputChange('input_network_click_node', '');
-                      //Shiny.onInputChange('input_network_click_link', '');
-                      }
+ network_ret <- igraph_edgelist_3 %>%
+   visNetwork::visIgraph(randomSeed = random_seed ) %>%
+   visNetwork::visIgraphLayout(randomSeed = random_seed,layout = layout_current )
 
-                      if (nodesVar != null){
-                      Shiny.onInputChange('input_network_click_node', nodesVar);
-                      Shiny.onInputChange('input_network_click_edge', '');
-                      }
+ data_ret <- igraph_edgelist_3 %>% dplyr::select(name,count)
 
-                      if (nodesVar == null & edgesVar != null){
-                      Shiny.onInputChange('input_network_click_edge', edgesVar);
-                      Shiny.onInputChange('input_network_click_node', '');
-                      }
-                      //alert(nodesVar,edgesVar);
-                      ;}")
-
-
-
-  out <- list("graph_out"=igraph_edgelist_3,
+ out <- list("graph_out"=data_ret,
               "vis_out"=network_ret)
 
-  out
+ out
 }
 
 
 get_node_data <- function(input_node_name,current_db,filters=NULL){
 
-  print(input_node_name)
   filtered <- current_db %>% dplyr::filter(event==input_node_name)
 
   if (!is.null(filters)) {
